@@ -3,7 +3,6 @@ import { createServer as createViteServer } from "vite";
 import path from "path";
 import fs from "fs/promises";
 import dotenv from "dotenv";
-import { randomUUID } from "crypto";
 import { createClient } from "@supabase/supabase-js";
 import multer from "multer";
 
@@ -220,11 +219,14 @@ app.post("/api/admin/login", async (req, res) => {
 
 // User Auth - Signup
 app.post("/api/user/signup", async (req, res) => {
-  const { email, password, name } = req.body;
+  const { email: rawEmail, password, name } = req.body;
+  const email = rawEmail?.toLowerCase();
 
   if (!email || !password || !name) {
     return res.status(400).json({ error: "Email, password, and name are required" });
   }
+
+  console.log(`Attempting signup for email: ${email}`);
 
   try {
     // Check if user exists
@@ -239,18 +241,19 @@ app.post("/api/user/signup", async (req, res) => {
     }
 
     if (existingUsers && existingUsers.length > 0) {
+      console.log(`User already exists: ${email}`);
       return res.status(400).json({ error: "User already exists with this email" });
     }
 
     // Try inserting with role first
-    const newUser = { 
-      id: randomUUID(),
+    const newUser: any = { 
       email, 
       password, 
       name, 
       role: 'user' 
     };
 
+    console.log("Inserting new user...");
     let { data, error } = await supabase
       .from("users")
       .insert([newUser])
@@ -270,23 +273,20 @@ app.post("/api/user/signup", async (req, res) => {
 
     if (error) {
       console.error("Signup insert error FULL:", JSON.stringify(error));
-      console.error("Signup insert error MESSAGE:", error.message);
-      console.error("Signup insert error CODE:", error.code);
-      console.error("Signup insert error DETAILS:", error.details);
-      
       return res.status(500).json({ 
         error: "Failed to create account", 
         message: error.message,
         details: error.details,
-        code: error.code,
-        hint: error.hint
+        code: error.code
       });
     }
 
     if (!data || data.length === 0) {
+      console.error("Signup succeeded but no data returned");
       return res.status(500).json({ error: "Account created but no data returned" });
     }
 
+    console.log(`Signup successful for: ${email}`);
     const { password: _, ...userWithoutPassword } = data[0];
     res.status(201).json(userWithoutPassword);
   } catch (err) {
@@ -297,11 +297,14 @@ app.post("/api/user/signup", async (req, res) => {
 
 // User Auth - Login
 app.post("/api/user/login", async (req, res) => {
-  const { email, password } = req.body;
+  const { email: rawEmail, password } = req.body;
+  const email = rawEmail?.toLowerCase();
 
   if (!email || !password) {
     return res.status(400).json({ error: "Email and password are required" });
   }
+
+  console.log(`Attempting login for email: ${email}`);
 
   try {
     const { data, error } = await supabase
@@ -317,9 +320,11 @@ app.post("/api/user/login", async (req, res) => {
     }
     
     if (data) {
+      console.log(`Login successful for: ${email}`);
       const { password: _, ...userWithoutPassword } = data;
       res.json(userWithoutPassword);
     } else {
+      console.log(`Login failed (invalid credentials) for: ${email}`);
       res.status(401).json({ error: "Invalid email or password" });
     }
   } catch (err) {

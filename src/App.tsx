@@ -10,6 +10,7 @@ import {
   X, 
   CheckCircle2, 
   ArrowRight,
+  Mail,
   Phone,
   User,
   CreditCard,
@@ -157,11 +158,16 @@ export default function App() {
     }
 
     const endpoint = authMode === 'signup' ? '/api/user/signup' : '/api/user/login';
+    const normalizedForm = {
+      ...authForm,
+      email: authForm.email.toLowerCase().trim()
+    };
+
     try {
       const res = await fetch(endpoint, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(authForm),
+        body: JSON.stringify(normalizedForm),
       });
       const data = await res.json();
       if (res.ok) {
@@ -1429,7 +1435,7 @@ export default function App() {
                 <div>
                   <label className="block text-sm font-medium text-white/70 mb-2 ml-1">Email Address</label>
                   <div className="relative">
-                    <Phone className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-white/30" />
+                    <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-white/30" />
                     <input 
                       type="email" 
                       required
