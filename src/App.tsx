@@ -26,7 +26,9 @@ import {
   AlertCircle,
   ShoppingBag,
   Copy,
-  Upload
+  Upload,
+  Menu,
+  Filter
 } from 'lucide-react';
 import { GamePackage, OrderDetails, Order, OrderStatus } from './types';
 
@@ -36,6 +38,27 @@ export default function App() {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedPackage, setSelectedPackage] = useState<GamePackage | null>(null);
   const [isCheckingOut, setIsCheckingOut] = useState(false);
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [trackOrderId, setTrackOrderId] = useState('');
+  const [trackedOrder, setTrackedOrder] = useState<Order | null>(null);
+  const [isTrackModalOpen, setIsTrackModalOpen] = useState(false);
+
+  const handleTrackOrder = async (e: FormEvent) => {
+    e.preventDefault();
+    if (!trackOrderId) return;
+    try {
+      const res = await fetch(`/api/orders/${trackOrderId}`);
+      if (res.ok) {
+        const data = await res.json();
+        setTrackedOrder(data);
+        setIsTrackModalOpen(true);
+      } else {
+        alert('Order not found');
+      }
+    } catch (err) {
+      alert('Tracking failed');
+    }
+  };
   const [orderComplete, setOrderComplete] = useState(false);
   const [orderDetails, setOrderDetails] = useState<OrderDetails>({
     packageId: '',
@@ -378,6 +401,8 @@ export default function App() {
               </div>
               <span className="text-xl font-bold tracking-tight bg-gradient-to-r from-amber-400 to-yellow-600 bg-clip-text text-transparent">Asad Game Shop</span>
             </div>
+
+            {/* Desktop Navigation */}
             <div className="hidden md:flex items-center gap-8">
               <button 
                 onClick={() => setIsAdminView(false)}
@@ -415,7 +440,18 @@ export default function App() {
                     Logout
                   </button>
                 </div>
-              ) : null}
+              ) : (
+                <button 
+                  onClick={() => {
+                    setAuthMode('login');
+                    setShowAuthModal(true);
+                  }}
+                  className="text-sm font-medium text-white/70 hover:text-white transition-colors flex items-center gap-2"
+                >
+                  <User className="w-4 h-4" />
+                  Login
+                </button>
+              )}
 
               {(currentUser?.role === 'admin' || currentUser?.email === 'premium261256@gmail.com') && (
                 <button 
@@ -426,10 +462,105 @@ export default function App() {
                   {isAdminView ? 'Exit Admin' : 'Admin Panel'}
                 </button>
               )}
-              {!isUserLoggedIn && null}
+            </div>
+
+            {/* Mobile Menu Toggle */}
+            <div className="md:hidden flex items-center gap-4">
+              <button 
+                onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+                className="p-2 text-white/70 hover:text-white"
+              >
+                {isMobileMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
+              </button>
             </div>
           </div>
         </div>
+
+        {/* Mobile Menu */}
+        <AnimatePresence>
+          {isMobileMenuOpen && (
+            <motion.div
+              initial={{ opacity: 0, height: 0 }}
+              animate={{ opacity: 1, height: 'auto' }}
+              exit={{ opacity: 0, height: 0 }}
+              className="md:hidden bg-[#0a0a0a] border-b border-white/10 overflow-hidden"
+            >
+              <div className="px-4 py-6 space-y-4">
+                <button 
+                  onClick={() => {
+                    setIsAdminView(false);
+                    setIsMobileMenuOpen(false);
+                  }}
+                  className="block w-full text-left text-lg font-medium text-white/70 hover:text-white"
+                >
+                  Home
+                </button>
+                <a href="#" className="block text-lg font-medium text-white/70 hover:text-white">Games</a>
+                <a href="#" className="block text-lg font-medium text-white/70 hover:text-white">Support</a>
+                
+                {isUserLoggedIn ? (
+                  <div className="space-y-4 pt-4 border-t border-white/10">
+                    <button 
+                      onClick={() => {
+                        setShowUserOrders(true);
+                        fetchUserOrders(currentUser?.email || '');
+                        setIsMobileMenuOpen(false);
+                      }}
+                      className="flex items-center gap-3 text-lg font-medium text-white/70 hover:text-white"
+                    >
+                      <ShoppingBag className="w-5 h-5 text-amber-500" />
+                      My Orders
+                    </button>
+                    <button 
+                      onClick={() => {
+                        setShowProfileModal(true);
+                        setIsMobileMenuOpen(false);
+                      }}
+                      className="flex items-center gap-3 text-lg font-medium text-white/70 hover:text-white"
+                    >
+                      <User className="w-5 h-5 text-amber-500" />
+                      Profile
+                    </button>
+                    <button 
+                      onClick={() => {
+                        handleUserLogout();
+                        setIsMobileMenuOpen(false);
+                      }}
+                      className="flex items-center gap-3 text-lg font-medium text-red-500"
+                    >
+                      <LogOut className="w-5 h-5" />
+                      Logout
+                    </button>
+                  </div>
+                ) : (
+                  <button 
+                    onClick={() => {
+                      setAuthMode('login');
+                      setShowAuthModal(true);
+                      setIsMobileMenuOpen(false);
+                    }}
+                    className="flex items-center gap-3 text-lg font-medium text-amber-500"
+                  >
+                    <User className="w-5 h-5" />
+                    Login
+                  </button>
+                )}
+
+                {(currentUser?.role === 'admin' || currentUser?.email === 'premium261256@gmail.com') && (
+                  <button 
+                    onClick={() => {
+                      setIsAdminView(!isAdminView);
+                      setIsMobileMenuOpen(false);
+                    }}
+                    className="w-full bg-amber-600 text-white py-3 rounded-xl font-bold text-center"
+                  >
+                    {isAdminView ? 'Exit Admin' : 'Admin Panel'}
+                  </button>
+                )}
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
       </nav>
 
       {isAdminView ? (
@@ -440,6 +571,15 @@ export default function App() {
               <h2 className="text-2xl font-bold mb-6">Admin Access Required</h2>
               <p className="text-white/60 mb-8">You must be logged in with an admin account to access this panel.</p>
               <div className="space-y-3">
+                <button 
+                  onClick={() => {
+                    setAuthMode('login');
+                    setShowAuthModal(true);
+                  }}
+                  className="w-full bg-amber-600 text-white py-3 rounded-xl font-bold hover:bg-amber-500 transition-all shadow-lg shadow-amber-600/20"
+                >
+                  Login as Admin
+                </button>
                 <button 
                   onClick={() => setIsAdminView(false)}
                   className="w-full bg-white/5 text-white/60 py-3 rounded-xl font-bold hover:bg-white/10 transition-all"
@@ -979,17 +1119,32 @@ export default function App() {
               <div className="bg-white/5 backdrop-blur-md border border-white/10 rounded-[2.5rem] p-6 shadow-2xl shadow-amber-500/5">
                 <div className="space-y-6">
                   <div className="text-center">
-                    <h3 className="text-xl font-bold mb-1">স্বাগতম!</h3>
-                    <p className="text-white/40 text-xs">দ্রুত এবং নিরাপদ টপ-আপ সেবা</p>
+                    <h3 className="text-xl font-bold mb-1">অর্ডার ট্র্যাক করুন</h3>
+                    <p className="text-white/40 text-xs">আপনার অর্ডার আইডি দিয়ে স্ট্যাটাস দেখুন</p>
                   </div>
-                  <div className="grid grid-cols-1 gap-4">
-                    <div className="p-4 rounded-2xl bg-white/5 border border-white/10 text-center">
-                      <p className="text-amber-500 font-bold text-2xl">5000+</p>
-                      <p className="text-white/40 text-[10px] uppercase tracking-wider">সফল অর্ডার</p>
+                  <form onSubmit={handleTrackOrder} className="space-y-3">
+                    <input 
+                      type="text" 
+                      placeholder="Order ID (e.g. ord-123)"
+                      className="w-full bg-white/5 border border-white/10 rounded-xl py-3 px-4 focus:outline-none focus:ring-2 focus:ring-amber-500/50 transition-all text-sm"
+                      value={trackOrderId}
+                      onChange={(e) => setTrackOrderId(e.target.value)}
+                    />
+                    <button 
+                      type="submit"
+                      className="w-full bg-amber-600 text-white py-3 rounded-xl font-bold hover:bg-amber-500 transition-all shadow-lg shadow-amber-600/20 text-sm"
+                    >
+                      ট্র্যাক করুন
+                    </button>
+                  </form>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="p-3 rounded-xl bg-white/5 border border-white/10 text-center">
+                      <p className="text-amber-500 font-bold text-lg">5000+</p>
+                      <p className="text-white/40 text-[8px] uppercase tracking-wider">সফল অর্ডার</p>
                     </div>
-                    <div className="p-4 rounded-2xl bg-white/5 border border-white/10 text-center">
-                      <p className="text-amber-500 font-bold text-2xl">24/7</p>
-                      <p className="text-white/40 text-[10px] uppercase tracking-wider">সাপোর্ট</p>
+                    <div className="p-3 rounded-xl bg-white/5 border border-white/10 text-center">
+                      <p className="text-amber-500 font-bold text-lg">24/7</p>
+                      <p className="text-white/40 text-[8px] uppercase tracking-wider">সাপোর্ট</p>
                     </div>
                   </div>
                 </div>
@@ -1048,6 +1203,10 @@ export default function App() {
                   </div>
                 </div>
                 <div className="p-6">
+                  <div className="flex items-center gap-2 mb-2">
+                    <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
+                    <span className="text-[10px] font-bold text-green-500 uppercase tracking-widest">Online</span>
+                  </div>
                   <h3 className="text-lg font-bold mb-1">{pkg.name}</h3>
                   <p className="text-white/40 text-sm mb-4">Instant Top-up</p>
                   <div className="flex items-center justify-between">
@@ -1286,7 +1445,171 @@ export default function App() {
           </div>
         </div>
       </footer>
-      {/* Auth Modal Removed */}
+      {/* Auth Modal */}
+      <AnimatePresence>
+        {showAuthModal && (
+          <div className="fixed inset-0 z-[100] flex items-center justify-center px-4">
+            <motion.div 
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setShowAuthModal(false)}
+              className="absolute inset-0 bg-black/80 backdrop-blur-sm"
+            />
+            <motion.div 
+              initial={{ opacity: 0, scale: 0.95, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 20 }}
+              className="relative w-full max-w-md bg-[#111] border border-white/10 rounded-[2.5rem] p-8 overflow-hidden"
+            >
+              {/* Decorative background */}
+              <div className="absolute top-0 right-0 w-32 h-32 bg-amber-500/10 blur-3xl -mr-16 -mt-16" />
+              <div className="absolute bottom-0 left-0 w-32 h-32 bg-yellow-500/10 blur-3xl -ml-16 -mb-16" />
+
+              <div className="flex justify-between items-center mb-8 relative">
+                <div>
+                  <h2 className="text-2xl font-bold">{authMode === 'login' ? 'Welcome Back' : 'Create Account'}</h2>
+                  <p className="text-white/50 text-sm mt-1">
+                    {authMode === 'login' ? 'Login to manage your orders' : 'Join us for a better experience'}
+                  </p>
+                </div>
+                <button 
+                  onClick={() => setShowAuthModal(false)}
+                  className="p-2 hover:bg-white/5 rounded-full transition-colors"
+                >
+                  <X className="w-6 h-6" />
+                </button>
+              </div>
+
+              <form onSubmit={handleUserAuth} className="space-y-4 relative">
+                {authMode === 'signup' && (
+                  <div>
+                    <label className="block text-sm font-medium text-white/70 mb-2 ml-1">Full Name</label>
+                    <div className="relative">
+                      <User className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-white/30" />
+                      <input 
+                        type="text" 
+                        required
+                        placeholder="John Doe"
+                        className="w-full bg-white/5 border border-white/10 rounded-2xl py-3.5 pl-12 pr-4 focus:outline-none focus:ring-2 focus:ring-amber-500/50 transition-all"
+                        value={authForm.name}
+                        onChange={(e) => setAuthForm({...authForm, name: e.target.value})}
+                      />
+                    </div>
+                  </div>
+                )}
+                <div>
+                  <label className="block text-sm font-medium text-white/70 mb-2 ml-1">Email Address</label>
+                  <div className="relative">
+                    <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-white/30" />
+                    <input 
+                      type="email" 
+                      required
+                      placeholder="name@example.com"
+                      className="w-full bg-white/5 border border-white/10 rounded-2xl py-3.5 pl-12 pr-4 focus:outline-none focus:ring-2 focus:ring-amber-500/50 transition-all"
+                      value={authForm.email}
+                      onChange={(e) => setAuthForm({...authForm, email: e.target.value})}
+                    />
+                  </div>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-white/70 mb-2 ml-1">Password</label>
+                  <div className="relative">
+                    <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-white/30" />
+                    <input 
+                      type="password" 
+                      required
+                      placeholder="••••••••"
+                      className="w-full bg-white/5 border border-white/10 rounded-2xl py-3.5 pl-12 pr-4 focus:outline-none focus:ring-2 focus:ring-amber-500/50 transition-all"
+                      value={authForm.password}
+                      onChange={(e) => setAuthForm({...authForm, password: e.target.value})}
+                    />
+                  </div>
+                </div>
+
+                <button 
+                  type="submit"
+                  className="w-full bg-gradient-to-r from-amber-600 to-yellow-600 text-white py-4 rounded-2xl font-bold hover:from-amber-500 hover:to-yellow-500 transition-all shadow-lg shadow-amber-600/20 mt-4"
+                >
+                  {authMode === 'login' ? 'Login' : 'Sign Up'}
+                </button>
+
+                <div className="text-center mt-6">
+                  <p className="text-white/50 text-sm">
+                    {authMode === 'login' ? "Don't have an account?" : "Already have an account?"}
+                    <button 
+                      type="button"
+                      onClick={() => setAuthMode(authMode === 'login' ? 'signup' : 'login')}
+                      className="ml-2 text-amber-500 font-semibold hover:underline"
+                    >
+                      {authMode === 'login' ? 'Sign Up' : 'Login'}
+                    </button>
+                  </p>
+                </div>
+              </form>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+      {/* Track Order Modal */}
+      <AnimatePresence>
+        {isTrackModalOpen && trackedOrder && (
+          <div className="fixed inset-0 z-[200] flex items-center justify-center p-4">
+            <motion.div 
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setIsTrackModalOpen(false)}
+              className="absolute inset-0 bg-black/90 backdrop-blur-md"
+            />
+            <motion.div 
+              initial={{ opacity: 0, scale: 0.95, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 20 }}
+              className="relative w-full max-w-md bg-[#111] border border-white/10 rounded-[2.5rem] p-8 overflow-hidden"
+            >
+              <div className="flex justify-between items-center mb-6">
+                <h2 className="text-2xl font-bold">Order Details</h2>
+                <button onClick={() => setIsTrackModalOpen(false)} className="p-2 hover:bg-white/5 rounded-full transition-colors">
+                  <X className="w-6 h-6" />
+                </button>
+              </div>
+              
+              <div className="space-y-4">
+                <div className="p-4 bg-white/5 border border-white/10 rounded-2xl">
+                  <p className="text-white/40 text-xs uppercase tracking-widest mb-1">Status</p>
+                  <span className={`px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider ${
+                    trackedOrder.status === 'pending' ? 'bg-amber-500/20 text-amber-500' :
+                    trackedOrder.status === 'approved' ? 'bg-green-500/20 text-green-500' :
+                    'bg-red-500/20 text-red-500'
+                  }`}>
+                    {trackedOrder.status}
+                  </span>
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="p-4 bg-white/5 border border-white/10 rounded-2xl">
+                    <p className="text-white/40 text-xs uppercase tracking-widest mb-1">Package</p>
+                    <p className="font-bold">{trackedOrder.packageName}</p>
+                  </div>
+                  <div className="p-4 bg-white/5 border border-white/10 rounded-2xl">
+                    <p className="text-white/40 text-xs uppercase tracking-widest mb-1">Price</p>
+                    <p className="font-bold text-amber-500">৳{trackedOrder.price}</p>
+                  </div>
+                </div>
+                <div className="p-4 bg-white/5 border border-white/10 rounded-2xl">
+                  <p className="text-white/40 text-xs uppercase tracking-widest mb-1">Player ID</p>
+                  <p className="font-mono font-bold">{trackedOrder.playerId}</p>
+                </div>
+                <div className="p-4 bg-white/5 border border-white/10 rounded-2xl">
+                  <p className="text-white/40 text-xs uppercase tracking-widest mb-1">Date</p>
+                  <p className="text-sm">{new Date(trackedOrder.timestamp).toLocaleString()}</p>
+                </div>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
       {/* Profile Modal */}
       {showProfileModal && (
         <div className="fixed inset-0 z-[150] flex items-center justify-center p-4">
