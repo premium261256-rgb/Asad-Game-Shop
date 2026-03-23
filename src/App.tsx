@@ -184,7 +184,8 @@ export default function App() {
       }
     } catch (err) {
       console.error('Auth error:', err);
-      alert('Authentication error. Please check your connection.');
+      const errorMessage = err instanceof Error ? err.message : String(err);
+      alert(`Authentication error: ${errorMessage}. Please check your connection.`);
     }
   };
 
