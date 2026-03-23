@@ -383,7 +383,7 @@ export default function App() {
                 </button>
               )}
 
-              {currentUser?.role === 'admin' && (
+              {(currentUser?.role === 'admin' || currentUser?.email === 'premium261256@gmail.com') && (
                 <button 
                   onClick={() => setIsAdminView(!isAdminView)}
                   className={`flex items-center gap-2 px-4 py-2 rounded-full text-sm font-semibold transition-all ${isAdminView ? 'bg-amber-700 text-white' : 'bg-amber-600 text-white hover:bg-amber-500'}`}
@@ -404,7 +404,7 @@ export default function App() {
 
       {isAdminView ? (
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-          {currentUser?.role !== 'admin' ? (
+          {(currentUser?.role !== 'admin' && currentUser?.email !== 'premium261256@gmail.com') ? (
             <div className="max-w-md mx-auto bg-[#111] border border-white/10 rounded-[2rem] p-8 text-center">
               <Lock className="w-12 h-12 text-amber-500 mx-auto mb-6" />
               <h2 className="text-2xl font-bold mb-6">Unauthorized</h2>

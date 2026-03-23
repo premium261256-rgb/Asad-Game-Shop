@@ -49,16 +49,38 @@ const isAdmin = async (req: express.Request, res: express.Response, next: expres
   const userId = req.headers["x-user-id"];
   if (!userId) return res.status(401).json({ error: "Unauthorized" });
 
-  const { data: user, error } = await supabase
-    .from("users")
-    .select("role")
-    .eq("id", userId)
-    .single();
+  try {
+    const { data: user, error } = await supabase
+      .from("users")
+      .select("role, email")
+      .eq("id", userId)
+      .single();
 
-  if (error || !user || user.role !== "admin") {
+    // Allow if user is admin OR if it's the default admin email
+    if (user && (user.role === "admin" || user.email === "premium261256@gmail.com")) {
+      return next();
+    }
+
+    if (error) {
+      console.error("Admin check error:", error.message);
+      // If role column is missing, we still want to allow the default admin by email
+      // But we need to fetch the user again without the role column to be sure
+      const { data: userByEmail } = await supabase
+        .from("users")
+        .select("email")
+        .eq("id", userId)
+        .single();
+      
+      if (userByEmail && userByEmail.email === "premium261256@gmail.com") {
+        return next();
+      }
+    }
+
     return res.status(403).json({ error: "Forbidden: Admin access required" });
+  } catch (err) {
+    console.error("Auth middleware error:", err);
+    res.status(500).json({ error: "Internal server error during auth check" });
   }
-  next();
 };
 
 // API Routes - Products
