@@ -311,16 +311,11 @@ export default function App() {
 
   const handleSubmitOrder = async (e: FormEvent) => {
     e.preventDefault();
-    if (!isUserLoggedIn) {
-      setAuthMode('login');
-      setShowAuthModal(true);
-      return;
-    }
 
     const orderData = {
       ...orderDetails,
-      userEmail: currentUser?.email,
-      userName: currentUser?.name,
+      userEmail: currentUser?.email || 'guest@example.com',
+      userName: currentUser?.name || 'Guest User',
       packageName: selectedPackage?.name,
       price: selectedPackage?.price,
     };
@@ -334,7 +329,9 @@ export default function App() {
       if (res.ok) {
         setOrderComplete(true);
         setIsCheckingOut(false);
-        fetchUserOrders(currentUser!.email);
+        if (currentUser) {
+          fetchUserOrders(currentUser.email);
+        }
       }
     } catch (err) {
       alert('Order failed');
@@ -418,18 +415,7 @@ export default function App() {
                     Logout
                   </button>
                 </div>
-              ) : (
-                <button 
-                  onClick={() => {
-                    setAuthMode('login');
-                    setShowAuthModal(true);
-                  }}
-                  className="text-sm font-medium text-white/70 hover:text-white transition-colors flex items-center gap-2"
-                >
-                  <User className="w-4 h-4" />
-                  Login / Sign Up
-                </button>
-              )}
+              ) : null}
 
               {(currentUser?.role === 'admin' || currentUser?.email === 'premium261256@gmail.com') && (
                 <button 
@@ -440,11 +426,7 @@ export default function App() {
                   {isAdminView ? 'Exit Admin' : 'Admin Panel'}
                 </button>
               )}
-              {!isUserLoggedIn && (
-                <button className="bg-amber-600 text-white px-4 py-2 rounded-full text-sm font-semibold hover:bg-amber-500 transition-colors">
-                  Track Order
-                </button>
-              )}
+              {!isUserLoggedIn && null}
             </div>
           </div>
         </div>
@@ -458,15 +440,6 @@ export default function App() {
               <h2 className="text-2xl font-bold mb-6">Admin Access Required</h2>
               <p className="text-white/60 mb-8">You must be logged in with an admin account to access this panel.</p>
               <div className="space-y-3">
-                <button 
-                  onClick={() => {
-                    setAuthMode('login');
-                    setShowAuthModal(true);
-                  }}
-                  className="w-full bg-amber-600 text-white py-3 rounded-xl font-bold hover:bg-amber-500 transition-all shadow-lg shadow-amber-600/20"
-                >
-                  Login as Admin
-                </button>
                 <button 
                   onClick={() => setIsAdminView(false)}
                   className="w-full bg-white/5 text-white/60 py-3 rounded-xl font-bold hover:bg-white/10 transition-all"
@@ -997,96 +970,29 @@ export default function App() {
               )}
             </div>
 
-            {/* Quick Auth Card */}
+            {/* Quick Stats Card */}
             <motion.div
               initial={{ opacity: 0, x: 20 }}
               animate={{ opacity: 1, x: 0 }}
               className="lg:col-span-3"
             >
               <div className="bg-white/5 backdrop-blur-md border border-white/10 rounded-[2.5rem] p-6 shadow-2xl shadow-amber-500/5">
-                {isUserLoggedIn ? (
-                  <div className="space-y-6">
-                    <div className="flex flex-col items-center gap-3">
-                      <div className="w-16 h-16 rounded-full bg-amber-500/10 border border-amber-500/30 flex items-center justify-center">
-                        <User className="w-8 h-8 text-amber-500" />
-                      </div>
-                      <div className="text-center">
-                        <h3 className="text-lg font-bold">{currentUser?.name}</h3>
-                        <p className="text-white/40 text-xs">{currentUser?.email}</p>
-                      </div>
+                <div className="space-y-6">
+                  <div className="text-center">
+                    <h3 className="text-xl font-bold mb-1">স্বাগতম!</h3>
+                    <p className="text-white/40 text-xs">দ্রুত এবং নিরাপদ টপ-আপ সেবা</p>
+                  </div>
+                  <div className="grid grid-cols-1 gap-4">
+                    <div className="p-4 rounded-2xl bg-white/5 border border-white/10 text-center">
+                      <p className="text-amber-500 font-bold text-2xl">5000+</p>
+                      <p className="text-white/40 text-[10px] uppercase tracking-wider">সফল অর্ডার</p>
                     </div>
-                    <div className="grid grid-cols-1 gap-2">
-                      <button 
-                        onClick={() => {
-                          setShowUserOrders(true);
-                          fetchUserOrders(currentUser?.email || '');
-                        }}
-                        className="w-full py-2.5 rounded-xl bg-white/5 border border-white/10 hover:bg-white/10 transition-all text-xs font-bold flex items-center justify-center gap-2"
-                      >
-                        <ShoppingBag className="w-4 h-4 text-amber-500" />
-                        আমার অর্ডারসমূহ
-                      </button>
-                      <button 
-                        onClick={() => setShowProfileModal(true)}
-                        className="w-full py-2.5 rounded-xl bg-white/5 border border-white/10 hover:bg-white/10 transition-all text-xs font-bold flex items-center justify-center gap-2"
-                      >
-                        <User className="w-4 h-4 text-amber-500" />
-                        প্রোফাইল দেখুন
-                      </button>
-                      {(currentUser?.role === 'admin' || currentUser?.email === 'premium261256@gmail.com') && (
-                        <button 
-                          onClick={() => setIsAdminView(!isAdminView)}
-                          className="w-full py-2.5 rounded-xl bg-amber-600/20 border border-amber-600/30 hover:bg-amber-600 hover:text-white transition-all text-xs font-bold flex items-center justify-center gap-2"
-                        >
-                          <Settings className="w-4 h-4" />
-                          {isAdminView ? 'Exit Admin' : 'Admin Panel'}
-                        </button>
-                      )}
-                      <button 
-                        onClick={handleLogout}
-                        className="w-full py-2.5 rounded-xl bg-red-600/10 text-red-500 hover:bg-red-600 hover:text-white transition-all text-xs font-bold flex items-center justify-center gap-2"
-                      >
-                        <LogOut className="w-4 h-4" />
-                        লগআউট
-                      </button>
+                    <div className="p-4 rounded-2xl bg-white/5 border border-white/10 text-center">
+                      <p className="text-amber-500 font-bold text-2xl">24/7</p>
+                      <p className="text-white/40 text-[10px] uppercase tracking-wider">সাপোর্ট</p>
                     </div>
                   </div>
-                ) : (
-                  <div className="space-y-6">
-                    <div className="text-center">
-                      <h3 className="text-xl font-bold mb-1">স্বাগতম!</h3>
-                      <p className="text-white/40 text-xs">অর্ডার ট্র্যাক করতে লগইন করুন</p>
-                    </div>
-                    <div className="space-y-3">
-                      <button 
-                        onClick={() => {
-                          setAuthMode('login');
-                          setShowAuthModal(true);
-                        }}
-                        className="w-full py-3 rounded-xl bg-amber-600 text-white font-bold hover:bg-amber-500 transition-all text-sm shadow-lg shadow-amber-600/20"
-                      >
-                        লগইন করুন
-                      </button>
-                      <div className="flex items-center gap-2 py-2">
-                        <div className="h-px flex-1 bg-white/10" />
-                        <span className="text-[10px] text-white/20 font-bold uppercase tracking-widest">অথবা</span>
-                        <div className="h-px flex-1 bg-white/10" />
-                      </div>
-                      <button 
-                        onClick={() => {
-                          setAuthMode('signup');
-                          setShowAuthModal(true);
-                        }}
-                        className="w-full py-3 rounded-xl bg-white/5 border border-white/10 text-white font-bold hover:bg-white/10 transition-all text-sm"
-                      >
-                        নতুন অ্যাকাউন্ট খুলুন
-                      </button>
-                    </div>
-                    <p className="text-[10px] text-center text-white/30 leading-relaxed">
-                      এগিয়ে যাওয়ার মাধ্যমে আপনি আমাদের শর্তাবলী এবং গোপনীয়তা নীতিতে সম্মত হচ্ছেন।
-                    </p>
-                  </div>
-                )}
+                </div>
               </div>
             </motion.div>
           </div>
@@ -1380,112 +1286,7 @@ export default function App() {
           </div>
         </div>
       </footer>
-      {/* Auth Modal */}
-      <AnimatePresence>
-        {showAuthModal && (
-          <div className="fixed inset-0 z-[100] flex items-center justify-center px-4">
-            <motion.div 
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              onClick={() => setShowAuthModal(false)}
-              className="absolute inset-0 bg-black/80 backdrop-blur-sm"
-            />
-            <motion.div 
-              initial={{ opacity: 0, scale: 0.95, y: 20 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.95, y: 20 }}
-              className="relative w-full max-w-md bg-[#111] border border-white/10 rounded-[2.5rem] p-8 overflow-hidden"
-            >
-              {/* Decorative background */}
-              <div className="absolute top-0 right-0 w-32 h-32 bg-amber-500/10 blur-3xl -mr-16 -mt-16" />
-              <div className="absolute bottom-0 left-0 w-32 h-32 bg-yellow-500/10 blur-3xl -ml-16 -mb-16" />
-
-              <div className="flex justify-between items-center mb-8 relative">
-                <div>
-                  <h2 className="text-2xl font-bold">{authMode === 'login' ? 'Welcome Back' : 'Create Account'}</h2>
-                  <p className="text-white/50 text-sm mt-1">
-                    {authMode === 'login' ? 'Login to manage your orders' : 'Join us for a better experience'}
-                  </p>
-                </div>
-                <button 
-                  onClick={() => setShowAuthModal(false)}
-                  className="p-2 hover:bg-white/5 rounded-full transition-colors"
-                >
-                  <X className="w-6 h-6" />
-                </button>
-              </div>
-
-              <form onSubmit={handleUserAuth} className="space-y-4 relative">
-                {authMode === 'signup' && (
-                  <div>
-                    <label className="block text-sm font-medium text-white/70 mb-2 ml-1">Full Name</label>
-                    <div className="relative">
-                      <User className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-white/30" />
-                      <input 
-                        type="text" 
-                        required
-                        placeholder="John Doe"
-                        className="w-full bg-white/5 border border-white/10 rounded-2xl py-3.5 pl-12 pr-4 focus:outline-none focus:ring-2 focus:ring-amber-500/50 transition-all"
-                        value={authForm.name}
-                        onChange={(e) => setAuthForm({...authForm, name: e.target.value})}
-                      />
-                    </div>
-                  </div>
-                )}
-                <div>
-                  <label className="block text-sm font-medium text-white/70 mb-2 ml-1">Email Address</label>
-                  <div className="relative">
-                    <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-white/30" />
-                    <input 
-                      type="email" 
-                      required
-                      placeholder="name@example.com"
-                      className="w-full bg-white/5 border border-white/10 rounded-2xl py-3.5 pl-12 pr-4 focus:outline-none focus:ring-2 focus:ring-amber-500/50 transition-all"
-                      value={authForm.email}
-                      onChange={(e) => setAuthForm({...authForm, email: e.target.value})}
-                    />
-                  </div>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-white/70 mb-2 ml-1">Password</label>
-                  <div className="relative">
-                    <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-white/30" />
-                    <input 
-                      type="password" 
-                      required
-                      placeholder="••••••••"
-                      className="w-full bg-white/5 border border-white/10 rounded-2xl py-3.5 pl-12 pr-4 focus:outline-none focus:ring-2 focus:ring-amber-500/50 transition-all"
-                      value={authForm.password}
-                      onChange={(e) => setAuthForm({...authForm, password: e.target.value})}
-                    />
-                  </div>
-                </div>
-
-                <button 
-                  type="submit"
-                  className="w-full bg-gradient-to-r from-amber-600 to-yellow-600 text-white py-4 rounded-2xl font-bold hover:from-amber-500 hover:to-yellow-500 transition-all shadow-lg shadow-amber-600/20 mt-4"
-                >
-                  {authMode === 'login' ? 'Login' : 'Sign Up'}
-                </button>
-
-                <div className="text-center mt-6">
-                  <p className="text-white/50 text-sm">
-                    {authMode === 'login' ? "Don't have an account?" : "Already have an account?"}
-                    <button 
-                      type="button"
-                      onClick={() => setAuthMode(authMode === 'login' ? 'signup' : 'login')}
-                      className="ml-2 text-amber-500 font-semibold hover:underline"
-                    >
-                      {authMode === 'login' ? 'Sign Up' : 'Login'}
-                    </button>
-                  </p>
-                </div>
-              </form>
-            </motion.div>
-          </div>
-        )}
-      </AnimatePresence>
+      {/* Auth Modal Removed */}
       {/* Profile Modal */}
       {showProfileModal && (
         <div className="fixed inset-0 z-[150] flex items-center justify-center p-4">
