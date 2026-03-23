@@ -5,11 +5,31 @@ import fs from "fs/promises";
 import dotenv from "dotenv";
 import { randomUUID } from "crypto";
 import { createClient } from "@supabase/supabase-js";
+import multer from "multer";
 
 dotenv.config();
 
 const app = express();
 const PORT = 3000;
+
+// Multer configuration for image uploads
+const storage = multer.diskStorage({
+  destination: async (req, file, cb) => {
+    const uploadDir = path.join(process.cwd(), "public/uploads");
+    try {
+      await fs.mkdir(uploadDir, { recursive: true });
+    } catch (err) {
+      // Ignore if directory already exists
+    }
+    cb(null, uploadDir);
+  },
+  filename: (req, file, cb) => {
+    const uniqueSuffix = Date.now() + "-" + Math.round(Math.random() * 1e9);
+    cb(null, uniqueSuffix + path.extname(file.originalname));
+  },
+});
+
+const upload = multer({ storage });
 
 // Supabase Configuration
 const supabaseUrl = process.env.SUPABASE_URL || "https://ghdmhoqqawvcnewfilns.supabase.co";
@@ -44,6 +64,17 @@ app.get("/api/health", async (req, res) => {
     res.status(500).json({ status: "error", message: err.message });
   }
 });
+
+// File Upload Endpoint
+app.post("/api/upload", upload.single("image"), (req: any, res) => {
+  if (!req.file) {
+    return res.status(400).json({ error: "No file uploaded" });
+  }
+  const imageUrl = `/uploads/${req.file.filename}`;
+  res.json({ imageUrl });
+});
+
+app.use("/uploads", express.static(path.join(process.cwd(), "public/uploads")));
 
 // Seed Products from JSON if table is empty
 async function seedProducts() {
