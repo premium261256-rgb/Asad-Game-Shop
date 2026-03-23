@@ -141,6 +141,16 @@ export default function App() {
 
   const handleUserAuth = async (e: FormEvent) => {
     e.preventDefault();
+    
+    if (authMode === 'signup' && (!authForm.name || !authForm.email || !authForm.password)) {
+      alert('Please fill in all fields');
+      return;
+    }
+    if (authMode === 'login' && (!authForm.email || !authForm.password)) {
+      alert('Please fill in email and password');
+      return;
+    }
+
     const endpoint = authMode === 'signup' ? '/api/user/signup' : '/api/user/login';
     try {
       const res = await fetch(endpoint, {
@@ -155,13 +165,16 @@ export default function App() {
         localStorage.setItem('user', JSON.stringify(data));
         setShowAuthModal(false);
         fetchUserOrders(data.email);
+        setAuthForm({ email: '', password: '', name: '' });
       } else {
-        alert(data.error || 'Authentication failed');
+        const errorMsg = data.error || 'Authentication failed';
+        const detailedMsg = data.message || data.details || '';
+        alert(`${errorMsg}${detailedMsg ? ': ' + detailedMsg : ''}`);
       }
     } catch (err) {
-      alert('Authentication error');
+      console.error('Auth error:', err);
+      alert('Authentication error. Please check your connection.');
     }
-    setAuthForm({ email: '', password: '', name: '' });
   };
 
   const handleUserLogout = () => {

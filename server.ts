@@ -3,6 +3,7 @@ import { createServer as createViteServer } from "vite";
 import path from "path";
 import fs from "fs/promises";
 import dotenv from "dotenv";
+import { randomUUID } from "crypto";
 import { createClient } from "@supabase/supabase-js";
 
 dotenv.config();
@@ -14,6 +15,35 @@ const PORT = 3000;
 const supabaseUrl = process.env.SUPABASE_URL || "https://ghdmhoqqawvcnewfilns.supabase.co";
 const supabaseAnonKey = process.env.SUPABASE_ANON_KEY || "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdoZG1ob3FxYXd2Y25ld2ZpbG5zIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQyMjM4OTYsImV4cCI6MjA4OTc5OTg5Nn0.KrNL3jGnYgyBOrokUu-1qFyqmbcNZ8BHw3c4_1h2dLU";
 const supabase = createClient(supabaseUrl, supabaseAnonKey);
+
+// Health Check & DB Diagnostic
+app.get("/api/health", async (req, res) => {
+  try {
+    const results: any = {
+      status: "ok",
+      database: "checking...",
+      tables: {}
+    };
+
+    // Check products table
+    const { error: prodError } = await supabase.from("products").select("id").limit(1);
+    results.tables.products = prodError ? `Error: ${prodError.message}` : "ok";
+
+    // Check users table
+    const { error: userError } = await supabase.from("users").select("id").limit(1);
+    results.tables.users = userError ? `Error: ${userError.message}` : "ok";
+
+    if (prodError || userError) {
+      results.database = "error";
+    } else {
+      results.database = "connected";
+    }
+
+    res.json(results);
+  } catch (err: any) {
+    res.status(500).json({ status: "error", message: err.message });
+  }
+});
 
 // Seed Products from JSON if table is empty
 async function seedProducts() {
@@ -161,30 +191,109 @@ app.post("/api/admin/login", async (req, res) => {
 app.post("/api/user/signup", async (req, res) => {
   const { email, password, name } = req.body;
 
-  // Check if user exists
-  const { data: existingUser } = await supabase.from("users").select("*").eq("email", email).single();
-  if (existingUser) {
-    return res.status(400).json({ error: "User already exists" });
+  if (!email || !password || !name) {
+    return res.status(400).json({ error: "Email, password, and name are required" });
   }
 
-  const { data, error } = await supabase.from("users").insert([{ email, password, name, role: 'user' }]).select();
-  if (error) return res.status(500).json({ error: error.message });
+  try {
+    // Check if user exists
+    const { data: existingUsers, error: searchError } = await supabase
+      .from("users")
+      .select("id")
+      .eq("email", email);
+    
+    if (searchError) {
+      console.error("Signup search error:", searchError);
+      return res.status(500).json({ error: "Database error: " + searchError.message });
+    }
 
-  const { password: _, ...userWithoutPassword } = data[0];
-  res.status(201).json(userWithoutPassword);
+    if (existingUsers && existingUsers.length > 0) {
+      return res.status(400).json({ error: "User already exists with this email" });
+    }
+
+    // Try inserting with role first
+    const newUser = { 
+      id: randomUUID(),
+      email, 
+      password, 
+      name, 
+      role: 'user' 
+    };
+
+    let { data, error } = await supabase
+      .from("users")
+      .insert([newUser])
+      .select();
+
+    // If role column is missing, try without it
+    if (error && (error.message.includes('column "role"') || error.code === '42703' || error.code === 'PGRST204')) {
+      console.warn("Role column missing or not in cache, attempting insert without it");
+      const { role, ...userWithoutRole } = newUser;
+      const retry = await supabase
+        .from("users")
+        .insert([userWithoutRole])
+        .select();
+      data = retry.data;
+      error = retry.error;
+    }
+
+    if (error) {
+      console.error("Signup insert error FULL:", JSON.stringify(error));
+      console.error("Signup insert error MESSAGE:", error.message);
+      console.error("Signup insert error CODE:", error.code);
+      console.error("Signup insert error DETAILS:", error.details);
+      
+      return res.status(500).json({ 
+        error: "Failed to create account", 
+        message: error.message,
+        details: error.details,
+        code: error.code,
+        hint: error.hint
+      });
+    }
+
+    if (!data || data.length === 0) {
+      return res.status(500).json({ error: "Account created but no data returned" });
+    }
+
+    const { password: _, ...userWithoutPassword } = data[0];
+    res.status(201).json(userWithoutPassword);
+  } catch (err) {
+    console.error("Signup catch error:", err);
+    res.status(500).json({ error: "Internal server error during signup" });
+  }
 });
 
 // User Auth - Login
 app.post("/api/user/login", async (req, res) => {
   const { email, password } = req.body;
 
-  const { data, error } = await supabase.from("users").select("*").eq("email", email).eq("password", password).single();
-  
-  if (data) {
-    const { password: _, ...userWithoutPassword } = data;
-    res.json(userWithoutPassword);
-  } else {
-    res.status(401).json({ error: "Invalid credentials" });
+  if (!email || !password) {
+    return res.status(400).json({ error: "Email and password are required" });
+  }
+
+  try {
+    const { data, error } = await supabase
+      .from("users")
+      .select("*")
+      .eq("email", email)
+      .eq("password", password)
+      .maybeSingle();
+    
+    if (error) {
+      console.error("Login query error:", error);
+      return res.status(500).json({ error: "Login failed: " + error.message });
+    }
+    
+    if (data) {
+      const { password: _, ...userWithoutPassword } = data;
+      res.json(userWithoutPassword);
+    } else {
+      res.status(401).json({ error: "Invalid email or password" });
+    }
+  } catch (err) {
+    console.error("Login catch error:", err);
+    res.status(500).json({ error: "Internal server error during login" });
   }
 });
 
